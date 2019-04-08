@@ -41,60 +41,44 @@ class Drover extends EventEmitter {
     /**
      * @param {{herd: Object, signals: Object, config: Object=, statusManager: SheepStatusManager}}
      * @emits Drover#sheep-status-change proto, status
+     * @throws InvalidConfigurationError
+     * @throws InvalidClusterContextError
      */
     constructor({herd, signals, config, statusManager}) {
         super();
-        signals = signals || {};
-        config = config || {};
 
         if (!cluster.isMaster) {
             throw new InvalidClusterContextError('Drover usage allowed only with master context');
         }
 
-        if (!config.schedulingPolicy ||
-            ![cluster.SCHED_NONE, cluster.SCHED_RR].includes(config.schedulingPolicy)) {
-            throw new InvalidConfigurationError('Invalid cluster schedulingPolicy value');
-        }
+        this._assertConfig(config);
+        this._assertHerd(herd);
+        this._assertSignals(signals);
 
-        const protoHerd = Object.assign({}, herd);
-        this._config = Object.assign({}, config);
-
-        if (typeof protoHerd.count !== 'number' || protoHerd.count <= 0) {
-            throw new InvalidConfigurationError('"protoHerd.count" must be positive number');
-        }
-
-        if (typeof protoHerd.env !== 'object') {
-            throw new InvalidConfigurationError('"protoHerd.env" must be object');
-        }
-
-        if (!fs.lstatSync(protoHerd.script).isFile()) {
-            throw new InvalidConfigurationError('"protoHerd.script" must be valid file path');
-        }
+        this._config = _.cloneDeep(config);
 
         this._herd = [];
         this._scale = 0;
-        this._boostrapHerdPromise = this._bootstrapHerd(protoHerd);
+        this._protoCollection = this._createProtoCollection(herd);
         this._status = Drover.STATUS_SHUTTED_DOWN;
         this._sheepStatusManager = statusManager.bindDrover(this);
 
-        this.gracefulReload = this.gracefulReload.bind(this);
-        this.gracefulShutdown = this.gracefulShutdown.bind(this);
         this._release = this._release.bind(this);
         this._stop = this._stop.bind(this);
 
         if (signals.reload) {
-            process.on(signals.reload, this.gracefulReload);
+            process.on(signals.reload, this.gracefulReload.bind(this));
         }
 
         if (signals.shutdown) {
-            process.on(signals.shutdown, this.gracefulShutdown);
+            process.on(signals.shutdown, this.gracefulShutdown.bind(this));
         }
 
         cluster.schedulingPolicy = this._config.schedulingPolicy;
     }
 
     getConfig() {
-        return this._config;
+        return _.cloneDeep(this._config);
     }
 
     getStatus() {
@@ -123,7 +107,7 @@ class Drover extends EventEmitter {
 
         const protoCollection = this._herd.length > 0
             ? this._herd
-            : await this._boostrapHerdPromise;
+            : this._protoCollection;
 
         await this._releaseGroup(protoCollection);
 
@@ -275,6 +259,55 @@ class Drover extends EventEmitter {
     }
 
     /**
+     * @param {Object} config
+     * @private
+     * @throws InvalidConfigurationError
+     */
+    _assertConfig(config) {
+        if (!_.isPlainObject(config)) {
+            throw new InvalidConfigurationError('"config" must be a plain object');
+        }
+
+        if (!_.has(config, 'schedulingPolicy') ||
+          ![cluster.SCHED_NONE, cluster.SCHED_RR].includes(config.schedulingPolicy)) {
+            throw new InvalidConfigurationError('Invalid cluster schedulingPolicy value');
+        }
+    }
+
+    /**
+     * @param {Object} herd
+     * @private
+     * @throws InvalidConfigurationError
+     */
+    _assertHerd(herd) {
+        if (!Number.isSafeInteger(herd.count) || herd.count <= 0) {
+            throw new InvalidConfigurationError('"herd.count" must be a positive number');
+        }
+
+        if (!_.isPlainObject(herd.env)) {
+            throw new InvalidConfigurationError('"herd.env" must be a plain object');
+        }
+
+        if (!_.isString(herd.script) || !fs.lstatSync(herd.script).isFile()) {
+            throw new InvalidConfigurationError('"herd.script" must be a valid file path');
+        }
+    }
+
+    /**
+     * @param {Object} signals
+     * @private
+     * @throws InvalidConfigurationError
+     */
+    _assertSignals(signals) {
+        // there are no assertions of specific values of posix signals for the simplicity
+        if ((_.has(signals, 'reload') && !_.isString(signals.reload))
+          || (_.has(signals, 'shutdown') && !_.isString(signals.shutdown))
+        ) {
+            throw new InvalidConfigurationError('signals must be a strings');
+        }
+    }
+
+    /**
      * Gracefully stops sheep in herd. Herd composition won't change.
      *
      * Promise will be rejected with:
@@ -298,25 +331,23 @@ class Drover extends EventEmitter {
 
     /**
      * @param {{script: string, count: number, env: Object=}}
-     * @returns {Promise}
+     * @returns {Array}
      * @private
      */
-    _bootstrapHerd({script, count, env}) {
-        return new Promise((resolve) => {
-            let protoCollection = [];
+    _createProtoCollection({script, count, env}) {
+        let protoCollection = [];
 
-            for (let i = 0; i < count; i++) {
-                protoCollection.push(
-                    {
-                        script,
-                        env,
-                        status: Sheep.STATUS_WAITING,
-                    },
-                );
-            }
+        for (let i = 0; i < count; i++) {
+            protoCollection.push(
+                {
+                    script,
+                    env: _.clone(env),
+                    status: Sheep.STATUS_WAITING,
+                },
+            );
+        }
 
-            return resolve(protoCollection);
-        });
+        return protoCollection;
     }
 
     /**
@@ -339,6 +370,7 @@ class Drover extends EventEmitter {
         return new Promise((resolve, reject) => {
             cluster.setupMaster({exec: proto.script});
 
+            // cluster.fork may throw an exception
             const sheep = cluster.fork(proto.env);
 
             sheep.on('error', (error) => {

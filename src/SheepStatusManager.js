@@ -1,20 +1,25 @@
 'use strict';
 
+const _ = require('lodash');
 const Drover = require('./Drover');
 const DroverEvents = require('./DroverEvents');
 const {InvalidConfigurationError, TimeoutError} = require('./Error');
 
 class SheepStatusManager {
     /**
-     * @param {Object=} config
+     * @param {Object} config
+     * @throws InvalidConfigurationError
      */
     constructor(config) {
         this._pending = {};
         this._drover = undefined;
-        config = config || {};
 
-        if (typeof config.statusTimeout !== 'number' || config.statusTimeout <= 0) {
-            throw new InvalidConfigurationError('"config.statusTimeout" must be positive number');
+        if (!_.isPlainObject(config)) {
+            throw new InvalidConfigurationError('"config" must be a plain object');
+        }
+
+        if (!Number.isSafeInteger(config.statusTimeout) || config.statusTimeout <= 0) {
+            throw new InvalidConfigurationError('"config.statusTimeout" must be a positive number');
         }
 
         this._config = Object.assign({}, config);
@@ -23,6 +28,7 @@ class SheepStatusManager {
     /**
      * @param {Drover} drover
      * @return {SheepStatusManager}
+     * @throws InvalidConfigurationError
      */
     bindDrover(drover) {
         if (this._drover) {
@@ -50,7 +56,7 @@ class SheepStatusManager {
      * @param {number} status
      * @return {Promise}
      */
-    assure(id, status) {
+    async assure(id, status) {
         if (!this._drover) {
             throw new InvalidConfigurationError('Drover context does not bound');
         }
@@ -65,7 +71,7 @@ class SheepStatusManager {
     /**
      * @return {Promise}
      */
-    _deferredStatus() {
+    async _deferredStatus() {
         let res, rej;
 
         let promise = new Promise((resolve, reject) => {
