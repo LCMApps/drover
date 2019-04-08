@@ -1,0 +1,6 @@
+--reporter list
+--timeout 5000
+--slow 2500
+--check-leaks
+--recursive
+--require ./tests/Bootstrap.js
