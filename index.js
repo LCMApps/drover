@@ -1,15 +1,13 @@
 'use strict';
 
-const Drover = require('./src/Drover');
-const DroverEvents = require('./src/DroverEvents');
-const DroverFactory = require('./src/DroverFactory');
-const Sheep = require('./src/Sheep');
-const SheepEvents = require('./src/SheepEvents');
+const Master = require('./src/Master');
+const MasterFactory = require('./src/MasterFactory');
+const MessageBus = require('./src/MessageBus');
+const ExitReasons = require('./src/ExitReasons');
 
 module.exports = {
-    Drover,
-    DroverEvents,
-    DroverFactory,
-    Sheep,
-    SheepEvents,
+    Master,
+    MasterFactory,
+    MessageBus,
+    ExitReasons
 };

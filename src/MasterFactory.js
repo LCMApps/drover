@@ -1,11 +1,10 @@
 'use strict';
 
-const Drover = require('./Drover');
-const SheepStatusManager = require('./SheepStatusManager');
+const Master = require('./Master');
 const numCPUs = require('os').cpus().length;
 const cluster = require('cluster');
 
-class DroverFactory {
+class MasterFactory {
     /**
      * @param {
      *      {script: string,
@@ -16,7 +15,7 @@ class DroverFactory {
      *       restartTimeout: number=,
      *       statusTimeout: number=}
      * } options
-     * @returns {Drover}
+     * @returns {Master}
      */
     static create(options) {
         options = options || {};
@@ -33,12 +32,10 @@ class DroverFactory {
             statusTimeout = 2000,
         } = options;
 
-        const herd = {script, count, env};
-        const config = {schedulingPolicy, restartTimeout};
-        const statusManagerConfig = {statusTimeout};
+        const config = {script, count, env, schedulingPolicy, restartTimeout, statusTimeout};
 
-        return new Drover({herd, signals, config, statusManager: new SheepStatusManager(statusManagerConfig)});
+        return new Master({config, signals});
     }
 }
 
-module.exports = DroverFactory;
+module.exports = MasterFactory;

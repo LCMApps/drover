@@ -1,6 +1,6 @@
 'use strict';
 
 module.exports = {
-    STOP:     'stop',
-    SHUTDOWN: 'shutdown',
+    STOP: 'stop',
+    QUIT: 'quit',
 };
