@@ -32,26 +32,6 @@ master.on('worker-exit', async (reason, workerId) => {
     }
 });
 
-const run = async () => {
-    try {
-        await master.start();
-        // right here we have a guarantee that all 4 app instances
-        // already did their business logic (raised connects, started servers, etc)
-    } catch (err) {
-        // your start-failed handler logic here
-        console.error(err);
-        return;
-    }
-
-    // primitive health-check from master every 2s
-    setInterval(() => {
-        master.getWorkersStatuses().forEach((v, i) => {
-            console.log(`[app-${i}]: ${statusMap[v]}`);
-        });
-        console.log('---');
-    }, 2000);
-};
-
 const quit = async (code, signal, force = false) => {
     try {
         if (force) {
@@ -71,5 +51,25 @@ const quit = async (code, signal, force = false) => {
 
 // handle main process SIGINT (default signal in Unix when "ctrl+c" terminal interruption happened)
 process.on('SIGINT', quit);
+
+const run = async () => {
+    try {
+        await master.start();
+        // right here we have a guarantee that all 4 app instances
+        // already did their business logic (raised connects, started servers, etc)
+    } catch (err) {
+        // your start-failed handler logic here
+        console.error(err);
+        return;
+    }
+
+    // primitive health-check from master every 2s
+    setInterval(() => {
+        master.getWorkersStatuses().forEach((v, i) => {
+            console.log(`[app-${i}]: ${statusMap[v]}`);
+        });
+        console.log('---');
+    }, 2000);
+};
 
 run().catch(console.error);
