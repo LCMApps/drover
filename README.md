@@ -30,7 +30,7 @@ $ yarn add drover
 * **Functional context (business logic)** - functional parts of application that directly contain the business logic
 * **Master** - entity of drover, which takes the role of creating and maintaining a given number of workers. This entity is always located only in `main context` of application.
 * **Worker** - entity of drover, which assumes a role in the actual up-to-date presentation of state of `functional context` process on `main context` side.
-* **MessageBus** - entity of drovder, which connects the `functional context` of application with `main context` provides bidirectional commands via IPC channel.
+* **MessageBus** - entity of drover, which connects the `functional context` of application with `main context` provides bidirectional commands via IPC channel.
 Strongly associated with `Worker` and appear as it's representation on side of the `functional context`.
 
 ## Main idea
