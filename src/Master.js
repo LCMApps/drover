@@ -121,40 +121,32 @@ class Master extends EventEmitter {
      * @returns {Promise}
      */
     async rescale(size) {
-        return new Promise(async (resolve, reject) => {
-            if (size <= 0) {
-                return reject(new InvalidArgumentError('Scale size must be positive', {size}));
-            }
+        if (size <= 0) {
+            throw new InvalidArgumentError('Scale size must be positive', { size });
+        }
 
-            if (this._status !== Master.STATUS_STARTED) {
-                return reject(
-                    new InappropriateConditionError('Action allowed only for started masters', {status: this._status}),
-                );
-            }
+        if (this._status !== Master.STATUS_STARTED) {
+            throw new InappropriateConditionError('Action allowed only for started masters', {status: this._status});
+        }
 
-            this._scale = size;
+        this._scale = size;
 
-            try {
-                const currentCount = this._workerCollection.length;
-                const delta = size - currentCount;
+        const currentCount = this._workerCollection.length;
+        const delta = size - currentCount;
 
-                if (delta > 0) {
-                    const newcomers = this._createWorkerCollection(delta);
+        if (delta > 0) {
+            const newcomers = this._createWorkerCollection(delta);
 
-                    await this._startGroup(newcomers);
+            await this._startGroup(newcomers);
 
-                    this._workerCollection.push(...newcomers);
-                } else if (delta < 0) {
-                    const victims = this._workerCollection.splice(0, Math.abs(delta));
+            this._workerCollection.push(...newcomers);
+        } else if (delta < 0) {
+            const victims = this._workerCollection.splice(0, Math.abs(delta));
 
-                    await this._killGroup(victims);
-                }
+            await this._killGroup(victims);
+        }
 
-                return resolve(delta);
-            } catch (err) {
-                return reject(err);
-            }
-        });
+        return delta;
     }
 
     /**

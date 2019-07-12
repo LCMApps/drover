@@ -37,7 +37,7 @@ class Worker extends EventEmitter {
      * @returns {Promise}
      */
     async start() {
-        return new Promise(async (resolve, reject) => {
+        return new Promise((resolve, reject) => {
             const {script, env} = this._config;
 
             if (this.getCurrentStatus() !== WorkerStatuses.INITIALIZED) {
@@ -55,9 +55,9 @@ class Worker extends EventEmitter {
 
                 this.once('start-failed', reject);
 
-                await this._assureStatusSequence([WorkerStatuses.STARTING, WorkerStatuses.STARTED]);
-
-                return resolve();
+                this._assureStatusSequence([WorkerStatuses.STARTING, WorkerStatuses.STARTED])
+                    .then(resolve)
+                    .catch(reject);
             } catch (err) {
                 this._errorHandler(err);
                 this.removeListener('start-failed', reject);
@@ -123,7 +123,9 @@ class Worker extends EventEmitter {
                     debug('_assureStatusSequence: %o', {actualStatus, expectedStatus});
 
                     if (actualStatus !== expectedStatus) {
-                        return reject(new WorkerStatusError('Unexpected worker status', { expectedStatus, actualStatus }));
+                        return reject(
+                            new WorkerStatusError('Unexpected worker status', { expectedStatus, actualStatus })
+                        );
                     }
 
                     if (expectedStatusSequence.length === 0) {
@@ -162,7 +164,11 @@ class Worker extends EventEmitter {
         debug('_onlineHandler');
 
         if (this.getCurrentStatus() !== WorkerStatuses.INITIALIZED) {
-            this.emit('start-failed', new UnexpectedWorkerState('IPC could be online only on initialized state'), this.getId());
+            this.emit(
+                'start-failed',
+                new UnexpectedWorkerState('IPC could be online only on initialized state'),
+                this.getId()
+            );
             return;
         }
 
