@@ -16,22 +16,6 @@ const master = MasterFactory.create(
     }
 );
 
-// add listener for 'worker-exit' event to handle different exit reasons up to your main app logic
-master.on('worker-exit', async (reason, workerId) => {
-    switch (reason.constructor) {
-        case ExitReasons.ExternalSignal:
-        case ExitReasons.AbnormalExit:
-            // restart worker if something abnormal happened or external process killed worker by signal
-            await master.restartWorkerById(workerId);
-            break;
-        default:
-            // for different cases just hard quit all app
-            const { code, signal } = reason.payload;
-            await quit(code, signal, true);
-            break;
-    }
-});
-
 const quit = async (code, signal, force = false) => {
     try {
         if (force) {
@@ -48,9 +32,6 @@ const quit = async (code, signal, force = false) => {
 
     setTimeout(() => process.exit(0), 0);
 };
-
-// handle main process SIGINT (default signal in Unix when "ctrl+c" terminal interruption happened)
-process.on('SIGINT', quit);
 
 const run = async () => {
     try {
@@ -71,5 +52,21 @@ const run = async () => {
         console.log('---');
     }, 2000);
 };
+
+// add listener for 'worker-exit' event to handle different exit reasons up to your main app logic
+master.on('worker-exit', async (reason, workerId) => {
+    if (reason instanceof ExitReasons.ExternalSignal || reason instanceof ExitReasons.AbnormalExit) {
+        // restart worker if something abnormal happened or external process killed worker by signal
+        await master.restartWorkerById(workerId);
+    } else {
+        // for different cases just hard quit all app
+        const { code, signal } = reason.payload;
+        // quit method will be described in next section
+        await quit(code, signal, true);
+    }
+});
+
+// handle main process SIGINT (default signal in Unix when "ctrl+c" terminal interruption happened)
+process.on('SIGINT', quit);
 
 run().catch(console.error);

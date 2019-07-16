@@ -22,6 +22,52 @@ Using yarn:
 $ yarn add drover
 ```
 
+# Simple usage
+
+`main.js`
+
+```javascript
+const { MasterFactory } = require('drover');
+
+const master = MasterFactory.create(
+    {
+        script: 'path/to/app.js',
+    }
+);
+
+process.on('SIGINT', async () => {
+    await master.gracefulShutdown();
+    process.exit(0);
+});
+
+master.start().catch(console.error);
+```
+
+`app.js`
+
+```javascript
+const express = require('express');
+const { MessageBus } = require('drover');
+
+const mb = new MessageBus();
+
+mb.on('stop', () => {
+    server.close(mb.sendStopped);
+});
+
+mb.on('quit', () => {
+    mb.sendShuttedDown();
+    setTimeout(() => process.exit(0), 50);
+});
+
+const app = express().get('/', (req, res) => {
+    res.send('hello');
+});
+
+const server = app.listen(1999, mb.sendStarted);
+```
+
+
 # Basic concepts
 
 ## Glossary
@@ -110,17 +156,14 @@ const master = MasterFactory.create(
 
 ```javascript
 master.on('worker-exit', async (reason, workerId) => {
-    switch (reason.constructor) {
-        case ExitReasons.ExternalSignal:
-        case ExitReasons.AbnormalExit:
-            // restart worker if something abnormal happened or external process killed worker by signal
-            await master.restartWorkerById(workerId);
-            break;
-        default:
-            // for different cases just hard quit all app
-            const { code, signal } = reason.payload;
-            await quit(code, signal, true);
-            break;
+    if (reason instanceof ExitReasons.ExternalSignal || reason instanceof ExitReasons.AbnormalExit) {
+        // restart worker if something abnormal happened or external process killed worker by signal
+        await master.restartWorkerById(workerId);
+    } else {
+        // for different cases just hard quit all app
+        const { code, signal } = reason.payload;
+        // quit method will be described in next section
+        await quit(code, signal, true);
     }
 });
 ```
@@ -282,3 +325,40 @@ const master = MasterFactory.create(
 
 In this case you still got advantages of graceful reloads with zero-downtime of your app. When reload begins - one more instance of app
 will be added right before previous one shut down.
+
+# Difference with PM2
+
+## License
+
+`drover` covered with [**MIT**](/LICENSE.md) license, so it's free to use for any kind of your private or commercial projects without
+ any restrictions and obligations to be open-sourced.
+
+## Clear and flexible programmatic flow
+
+`pm2` has programmatic flow, but it is still just API to `pm2` demon process and it brings some usage restrictions.
+With `drover` you've got more options, so flexibility for your business logic raises a lot.
+
+## More control
+
+`pm2` uses "let if fail" concept, but `drover` gives you control instead. You've got not just exits as fact, but you can
+manage different `ExitReasons` and handle each case according to your needs.
+
+# Debug
+
+`drover` module use `debug` module for this this purpose.
+
+Just run your app with `DEBUG` env var like example below:
+
+```javascript
+DEBUG=drover:* node main.js
+```
+
+Sample output for `simple-app` start:
+
+![Screenshot from 2019-07-16 12_32_21](https://user-images.githubusercontent.com/6859896/61284297-53eecc00-a7c7-11e9-85d5-e3680ba77501.jpg)
+
+And changes with `SIGINT` signal to `main.js` process triggered by `Ctrl+C`:
+
+![Screenshot from 2019-07-16 12_32_28](https://user-images.githubusercontent.com/6859896/61284562-e3947a80-a7c7-11e9-9588-6a2ef2efae0e.jpg)
+
+As you see, you have transparent access to all events, state changes and errors described behaviour even via IPC communication.
