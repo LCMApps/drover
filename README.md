@@ -1,4 +1,4 @@
-# Drover module - run, manage and scale nodejs solution that helps utilize multi-core systems
+# Drover - Run, manage and scale nodejs app to utilize multi-core systems
 
 Drover is native nodejs solution that takes away pain when orchestrating composite application and providers all-in-one point for graceful cluster control
 
