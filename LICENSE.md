@@ -1,6 +1,7 @@
 MIT License
 
 Copyright (c) 2019 Elijah Zakirov <elijah.zakirov@gmail.com>
+Copyright (c) 2019 Dmitry Menshikov <d.menshikov@gmail.com>
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

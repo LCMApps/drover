@@ -1,6 +1,6 @@
 {
     "name": "drover",
-    "version": "0.7.0",
+    "version": "1.0.0",
     "description": "Drover is native nodejs solution that takes away pain when orchestrating composite application and providers all-in-one point for graceful cluster control",
     "main": "index.js",
     "scripts": {
