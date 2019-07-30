@@ -14,16 +14,6 @@
         "type": "git",
         "url": "https://github.com/LCMApps/drover"
     },
-    "maintainers": [
-      {
-        "name": "Dmitry Menshikov",
-        "email": "d.menshikov@gmail.com"
-      },
-      {
-        "name": "Elijah Zakirov",
-        "email": "elijah.zakirov@gmail.com"
-      }
-    ],
     "keywords": [
         "drover",
         "cluster",
